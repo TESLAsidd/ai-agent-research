@@ -222,8 +222,8 @@ class Config:
     
     # AI Model Settings
     OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')
-    PERPLEXITY_MODEL = os.getenv('PERPLEXITY_MODEL', 'llama-3.1-sonar-large-128k-online')
-    ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-sonnet-20240229')
+    PERPLEXITY_MODEL = os.getenv('PERPLEXITY_MODEL', 'sonar-small-chat')
+    ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-3-sonar-20240620')
     TEMPERATURE = float(os.getenv('TEMPERATURE', 0.1))
     MAX_TOKENS = 2000
     

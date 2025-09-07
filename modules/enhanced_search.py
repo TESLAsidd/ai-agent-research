@@ -33,27 +33,29 @@ class PerplexitySearchEngine:
     def search_and_summarize(self, query: str, num_results: int = 5) -> Dict:
         """Search and get AI-powered summary in one call"""
         if not self.config.PERPLEXITY_API_KEY:
-            return {"error": "Perplexity API key not configured"}
+            return {"error": "Perplexity API key not configured", "success": False}
         
+        # Updated prompt with better structure
         prompt = f"""
         Research the topic: "{query}"
         
-        Please provide:
-        1. A comprehensive summary of current information
-        2. Key findings and recent developments
+        Please provide a comprehensive response with:
+        1. A detailed summary of current information about this topic
+        2. Key findings and recent developments (2024-2025)
         3. Multiple credible sources with URLs
         4. Statistical data or facts if available
         5. Different perspectives on the topic
         
-        Format your response with clear sections and include source citations.
+        Format your response clearly with sections and include source citations at the end.
         """
         
+        # Updated payload with correct model name and parameters
         payload = {
-            "model": self.config.PERPLEXITY_MODEL,
+            "model": self.config.PERPLEXITY_MODEL,  # This should be a valid model
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a research assistant that provides comprehensive, accurate, and up-to-date information with proper citations."
+                    "content": "You are a research assistant that provides comprehensive, accurate, and up-to-date information with proper citations. Focus on recent developments from 2024-2025."
                 },
                 {
                     "role": "user", 
@@ -62,6 +64,7 @@ class PerplexitySearchEngine:
             ],
             "max_tokens": 2000,
             "temperature": 0.1,
+            "top_p": 0.9,
             "return_citations": True,
             "return_images": False
         }
@@ -88,9 +91,14 @@ class PerplexitySearchEngine:
                 "success": True
             }
             
+        except requests.exceptions.HTTPError as e:
+            error_msg = f"Perplexity API HTTP error: {response.status_code} - {response.text}"
+            logger.error(error_msg)
+            return {"error": error_msg, "success": False}
         except Exception as e:
-            logger.error(f"Perplexity search failed: {str(e)}")
-            return {"error": f"Perplexity search failed: {str(e)}", "success": False}
+            error_msg = f"Perplexity search failed: {str(e)}"
+            logger.error(error_msg)
+            return {"error": error_msg, "success": False}
 
 class TavilySearchEngine:
     """Tavily API for real-time web search"""
@@ -181,7 +189,7 @@ class ExaSearchEngine:
                 self.base_url,
                 headers=self.headers,
                 json=payload,
-                timeout=15
+                timeout=10  # Reduced timeout to prevent hanging
             )
             response.raise_for_status()
             
@@ -204,6 +212,9 @@ class ExaSearchEngine:
             
             return results
             
+        except requests.exceptions.Timeout:
+            logger.warning("Exa search timed out, returning empty results")
+            return []
         except Exception as e:
             logger.error(f"Exa search failed: {str(e)}")
             return []
@@ -306,8 +317,12 @@ class EnhancedSearchEngine:
         if hasattr(self, 'perplexity'):
             try:
                 perplexity_result = self.perplexity.search_and_summarize(query)
+                if not perplexity_result.get('success', False):
+                    logger.warning(f"Perplexity search failed: {perplexity_result.get('error', 'Unknown error')}")
+                    perplexity_result = None
             except Exception as e:
                 logger.error(f"Perplexity search failed: {str(e)}")
+                perplexity_result = None
         
         # Parallel search across other engines
         search_results = []
@@ -326,6 +341,8 @@ class EnhancedSearchEngine:
                         search_results.extend(results)
                     except Exception as e:
                         logger.error(f"Search engine failed: {str(e)}")
+        else:
+            logger.warning("No enhanced search engines available, falling back to standard search")
         
         # Combine and rank results
         combined_results = self._combine_and_rank_results(search_results, query)

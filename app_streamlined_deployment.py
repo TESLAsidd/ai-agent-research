@@ -192,6 +192,10 @@ def display_follow_up_questions(results):
 def main():
     """Main application function - streamlined for deployment"""
     
+    # Initialize additional session state variables
+    if 'additional_extracted_content' not in st.session_state:
+        st.session_state.additional_extracted_content = []
+    
     # Header
     st.markdown('<div style="text-align: center; margin-bottom: 2rem;"><h1>🤖 AI Research Agent</h1><h3>Intelligent Research Automation</h3></div>', unsafe_allow_html=True)
     
@@ -609,9 +613,13 @@ def display_summary_section(results):
             st.error(f"Error: {summary['error']}")
 
 def display_sources_section(results):
-    """Display enhanced sources information"""
+    """Display enhanced sources information with automatic content extraction"""
     search_results = results.get('search_results', [])
     extracted_content = results.get('extracted_content', [])
+    
+    # Include additional extracted content if available
+    additional_extracted = st.session_state.get('additional_extracted_content', [])
+    all_extracted_content = extracted_content + additional_extracted
     
     # Handle different result formats
     if isinstance(search_results, dict):
@@ -626,7 +634,7 @@ def display_sources_section(results):
     with col1:
         st.metric("🔍 Search Results", len(sources_list))
     with col2:
-        st.metric("📄 Content Extracted", len(extracted_content))
+        st.metric("📄 Content Extracted", len(all_extracted_content))
     with col3:
         domains = list(set([source.get('domain', 'Unknown') for source in sources_list]))
         st.metric("🌐 Unique Domains", len(domains))
@@ -636,16 +644,45 @@ def display_sources_section(results):
         st.metric("🎯 Search Mode", mode)
     
     if sources_list:
-        # Enhanced sources display
+        # Enhanced sources display with automatic content extraction
         st.subheader(f"🔍 Search Sources ({len(sources_list)} found)")
         
+        # Create a mapping of URL to extracted content for quick lookup
+        url_to_content = {content.get('url', ''): content for content in all_extracted_content}
+        
         for i, source in enumerate(sources_list[:15], 1):
-            with st.expander(f"{i}. {source.get('title', 'Untitled')[:80]}..."):
+            with st.expander(f"{i}. {source.get('title', 'Untitled')[:80]}...", expanded=False):
                 col1, col2 = st.columns([3, 1])
                 
                 with col1:
                     st.markdown(f"**🔗 URL:** [{source.get('url', 'N/A')}]({source.get('url', '#')})")
-                    st.markdown(f"**📝 Description:** {source.get('snippet', 'No description available')[:400]}...")
+                    
+                    # Display search snippet
+                    st.markdown(f"**📝 Search Snippet:** {source.get('snippet', 'No description available')[:400]}...")
+                    
+                    # Display automatically extracted content if available
+                    source_url = source.get('url', '')
+                    if source_url in url_to_content:
+                        extracted = url_to_content[source_url]
+                        content_text = extracted.get('text', '')
+                        if content_text:
+                            # Show brief summary if available with enhanced styling
+                            if 'brief_summary' in extracted:
+                                st.markdown(f"**📄 Brief Summary:**")
+                                st.info(extracted['brief_summary'])
+                            
+                            # Show key points if available with enhanced styling
+                            if 'key_points' in extracted and extracted['key_points']:
+                                st.markdown("**🔑 Key Insights:**")
+                                for point in extracted['key_points'][:5]:
+                                    st.markdown(f"• {point}")
+                            elif content_text:
+                                # Fallback to showing a brief excerpt
+                                brief_content = content_text[:300].strip()
+                                if len(content_text) > 300:
+                                    brief_content += "..."
+                                st.markdown(f"**📄 Extracted Content:** {brief_content}")
+                    
                     if source.get('domain'):
                         st.markdown(f"**🌐 Domain:** {source['domain']}")
                 
@@ -654,6 +691,34 @@ def display_sources_section(results):
                         st.metric("🎯 Relevance", f"{source['score']:.2f}/1.0")
                     if source.get('source'):
                         st.caption(f"🔍 Engine: {source['source']}")
+                    
+                    # Show extraction method if available
+                    source_url = source.get('url', '')
+                    if source_url in url_to_content:
+                        extracted = url_to_content[source_url]
+                        method = extracted.get('extraction_method', 'Unknown')
+                        st.caption(f"🔧 Method: {method}")
+                    
+                    # Add a button to extract content if not already done
+                    source_url = source.get('url', '')
+                    if source_url and source_url not in url_to_content:
+                        if st.button("🔍 Extract Content", key=f"extract_{i}"):
+                            with st.spinner("Extracting content..."):
+                                try:
+                                    from modules.content_extractor import ContentExtractor
+                                    extractor = ContentExtractor()
+                                    extracted = extractor.extract_from_url(source_url)
+                                    if extracted:
+                                        # Add to session state for persistence
+                                        if 'additional_extracted_content' not in st.session_state:
+                                            st.session_state.additional_extracted_content = []
+                                        st.session_state.additional_extracted_content.append(extracted)
+                                        st.success("Content extracted successfully!")
+                                        st.rerun()
+                                    else:
+                                        st.warning("Could not extract content from this source.")
+                                except Exception as e:
+                                    st.error(f"Extraction failed: {str(e)}")
 
 def display_images_section(results):
     """Display images"""
