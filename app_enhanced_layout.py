@@ -661,6 +661,7 @@ def main():
                 # Step 2: Fast content extraction with parallel processing
                 status.text("📄 Extracting content (parallel processing)...")
                 extracted_content = []
+                results_list = []  # Initialize results_list
                 
                 if search_results and (not isinstance(search_results, dict) or not search_results.get('error')):
                     extractor = ContentExtractor()

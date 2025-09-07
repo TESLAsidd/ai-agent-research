@@ -41,6 +41,9 @@ class WebSearchEngine:
         if self.config.BING_SEARCH_API_KEY:
             self.search_engines.append(BingSearchAPI())
             
+        # Add DuckDuckGo as fallback (no API key required)
+        self.search_engines.append(DuckDuckGoSearch())
+            
         # NewsAPI - REMOVED (invalid key)
         # if self.config.NEWSAPI_KEY:
         #     self.search_engines.append(NewsAPISearch())
@@ -590,3 +593,105 @@ if __name__ == "__main__":
             print()
     else:
         print("No search engines configured. Please add API keys to your .env file.")
+
+
+class DuckDuckGoSearch:
+    """DuckDuckGo search implementation (no API key required)"""
+    
+    def __init__(self):
+        self.config = Config()
+        self.base_url = "https://html.duckduckgo.com/html/"
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
+    
+    def search(self, query: str, num_results: int, time_filter: str = None) -> List[Dict]:
+        """Search using DuckDuckGo (free, no API key)"""
+        try:
+            params = {
+                'q': query,
+                'b': '',  # No offset
+                'kl': 'us-en',  # Language
+                'df': self._get_date_filter(time_filter) if time_filter else ''
+            }
+            
+            response = self.session.get(self.base_url, params=params, timeout=self.config.SEARCH_TIMEOUT)
+            response.raise_for_status()
+            
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            results = []
+            result_links = soup.find_all('a', class_='result__a')
+            
+            for i, link in enumerate(result_links[:num_results]):
+                if not link:
+                    continue
+                    
+                title = link.get_text().strip() if link else 'No title'
+                url = link.get('href', '') if link else ''
+                
+                # Get snippet from result snippet
+                snippet_elem = link.find_parent().find('a', class_='result__snippet')
+                snippet = snippet_elem.get_text().strip() if snippet_elem else ''
+                
+                if url and title:
+                    result = {
+                        'title': title,
+                        'url': url,
+                        'snippet': snippet,
+                        'domain': self._extract_domain(url),
+                        'source': 'DuckDuckGo',
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    results.append(result)
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"DuckDuckGo search error: {str(e)}")
+            # Return basic fallback results
+            return self._create_fallback_results(query, num_results)
+    
+    def _get_date_filter(self, time_filter: str) -> str:
+        """Convert time filter to DuckDuckGo format"""
+        mapping = {
+            'day': 'd',
+            'week': 'w', 
+            'month': 'm',
+            'year': 'y'
+        }
+        return mapping.get(time_filter, '')
+    
+    def _extract_domain(self, url: str) -> str:
+        """Extract domain from URL"""
+        try:
+            from urllib.parse import urlparse
+            return urlparse(url).netloc
+        except:
+            return ''
+    
+    def _create_fallback_results(self, query: str, num_results: int) -> List[Dict]:
+        """Create basic fallback results when search fails"""
+        fallback_sources = [
+            "https://en.wikipedia.org",
+            "https://www.britannica.com", 
+            "https://www.sciencedirect.com",
+            "https://scholar.google.com",
+            "https://www.nature.com"
+        ]
+        
+        results = []
+        for i in range(min(num_results, len(fallback_sources))):
+            result = {
+                'title': f"Search for '{query}' - Source {i+1}",
+                'url': f"{fallback_sources[i]}/search?q={query.replace(' ', '+')}",
+                'snippet': f"Explore {query} on this authoritative source. Click to search for detailed information and research.",
+                'domain': fallback_sources[i].replace('https://', '').replace('www.', ''),
+                'source': 'Fallback Search',
+                'timestamp': datetime.now().isoformat()
+            }
+            results.append(result)
+        
+        return results
