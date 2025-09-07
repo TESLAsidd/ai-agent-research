@@ -11,7 +11,7 @@ sys.path.insert(0, current_dir)
 
 # Import and run the main app
 try:
-    from app_enhanced_layout import main
+    from app_streamlined_deployment import main
     
     # Set page config for deployment
     st.set_page_config(

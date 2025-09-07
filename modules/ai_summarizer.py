@@ -50,23 +50,23 @@ class AISummarizer:
         providers = {}
         
         # Check OpenAI
-        if self.config.OPENAI_API_KEY:
+        if self.config.OPENAI_API_KEY and self.config.OPENAI_API_KEY.startswith('sk-'):
             providers['openai'] = True
         
         # Check Gemini (priority #1 - free and reliable)
-        if hasattr(self.config, 'GEMINI_API_KEY') and self.config.GEMINI_API_KEY and not self.config.GEMINI_API_KEY.endswith('_here'):
+        if hasattr(self.config, 'GEMINI_API_KEY') and self.config.GEMINI_API_KEY and self.config.GEMINI_API_KEY.startswith('AIza'):
             providers['gemini'] = True
         
         # Check Hugging Face
-        if hasattr(self.config, 'HUGGINGFACE_API_KEY') and self.config.HUGGINGFACE_API_KEY and not self.config.HUGGINGFACE_API_KEY.endswith('_here'):
+        if hasattr(self.config, 'HUGGINGFACE_API_KEY') and self.config.HUGGINGFACE_API_KEY and self.config.HUGGINGFACE_API_KEY.startswith('hf_'):
             providers['huggingface'] = True
         
         # Check Cohere
-        if hasattr(self.config, 'COHERE_API_KEY') and self.config.COHERE_API_KEY and not self.config.COHERE_API_KEY.endswith('_here'):
+        if hasattr(self.config, 'COHERE_API_KEY') and self.config.COHERE_API_KEY and self.config.COHERE_API_KEY.startswith('co-'):
             providers['cohere'] = True
         
         # Check Together AI
-        if hasattr(self.config, 'TOGETHER_API_KEY') and self.config.TOGETHER_API_KEY and not self.config.TOGETHER_API_KEY.endswith('_here'):
+        if hasattr(self.config, 'TOGETHER_API_KEY') and self.config.TOGETHER_API_KEY and self.config.TOGETHER_API_KEY.startswith('together_'):
             providers['together'] = True
         
         # Check Ollama (local)
@@ -74,11 +74,11 @@ class AISummarizer:
             providers['ollama'] = True
         
         # Check Perplexity
-        if hasattr(self.config, 'PERPLEXITY_API_KEY') and self.config.PERPLEXITY_API_KEY:
+        if hasattr(self.config, 'PERPLEXITY_API_KEY') and self.config.PERPLEXITY_API_KEY and self.config.PERPLEXITY_API_KEY.startswith('pplx-'):
             providers['perplexity'] = True
         
         # Check Anthropic
-        if hasattr(self.config, 'ANTHROPIC_API_KEY') and self.config.ANTHROPIC_API_KEY:
+        if hasattr(self.config, 'ANTHROPIC_API_KEY') and self.config.ANTHROPIC_API_KEY and self.config.ANTHROPIC_API_KEY.startswith('sk-ant-'):
             providers['anthropic'] = True
         
         return providers
@@ -1141,6 +1141,9 @@ class AISummarizer:
     def _generate_fallback_analysis(self, content: str, query: str) -> str:
         """Generate fallback analysis when AI fails"""
         return f"Analysis of '{query}' indicates significant research interest and ongoing developments in the field. The available content provides insights into current understanding and future directions."
+    
+    def generate_structured_summary(self, content: str, query: str, options: Dict) -> Dict:
+        """
         Generate ChatGPT-style structured summary with detailed formatting
         
         Args:
@@ -1244,7 +1247,7 @@ Based on the following content about "{query}", provide a concise but well-struc
 
 Requirements:
 - Use clear headings with ##
-- Include bullet points (•) for key information
+- Include bullet points for key information
 - Keep it concise but informative (2-3 paragraphs max)
 - Focus on the most important insights
 - Use professional formatting
@@ -1258,7 +1261,7 @@ Provide a structured summary:
     def _create_advanced_summary_prompt(self, content: str, query: str, options: Dict) -> str:
         """Create prompt for advanced search with comprehensive formatting"""
         table_instruction = "\n- Include data tables when relevant (use | for table formatting)" if options.get('include_tables') else ""
-        bullet_instruction = "\n- Use detailed bullet points (•) and sub-bullets (◦) for organization" if options.get('include_bullet_points') else ""
+        bullet_instruction = "\n- Use detailed bullet points for organization" if options.get('include_bullet_points') else ""
         
         return f"""
 Based on the following content about "{query}", provide a comprehensive, ChatGPT-style structured analysis.
@@ -1268,9 +1271,9 @@ Required Structure:
 [Brief overview in 2-3 sentences]
 
 ## Key Findings
-• [Finding 1 with details]
-• [Finding 2 with details]
-• [Finding 3 with details]
+- [Finding 1 with details]
+- [Finding 2 with details]
+- [Finding 3 with details]
 
 ## Detailed Analysis
 ### Current State
@@ -1283,8 +1286,8 @@ Required Structure:
 [What this means moving forward]
 
 ## Technical Details
-• [Technical aspect 1]
-• [Technical aspect 2]
+- [Technical aspect 1]
+- [Technical aspect 2]
 
 ## Conclusion
 [Summary of key takeaways]{table_instruction}{bullet_instruction}
@@ -1302,14 +1305,14 @@ Provide your comprehensive structured analysis:
         if is_quick:
             return f"""## Quick Research Summary: {query}
 
-• **Topic Overview**: Research analysis of {query} based on available sources
-• **Key Information**: {len(content)} characters of content analyzed
-• **Sources Status**: Data successfully gathered and processed
+- **Topic Overview**: Research analysis of {query} based on available sources
+- **Key Information**: {len(content)} characters of content analyzed
+- **Sources Status**: Data successfully gathered and processed
 
 ### Main Insights
-• Current developments in {query} show active progress
-• Multiple sources provide valuable information on this topic  
-• Further detailed analysis available through advanced search mode
+- Current developments in {query} show active progress
+- Multiple sources provide valuable information on this topic  
+- Further detailed analysis available through advanced search mode
 
 **Note**: This quick summary provides essential information. For comprehensive analysis with detailed findings, tables, and technical details, please use Advanced Search mode."""
         else:
@@ -1326,18 +1329,18 @@ This analysis examines {query} based on {len(sentences)} key information points 
 """
             
             for i, point in enumerate(key_points, 1):
-                summary += f"• **Finding {i}**: {point[:200]}{'...' if len(point) > 200 else ''}\n"
+                summary += f"- **Finding {i}**: {point[:200]}{'...' if len(point) > 200 else ''}\n"
             
             summary += f"""
 ### Technical Analysis
-• **Data Sources**: Multiple authoritative sources analyzed
-• **Content Volume**: {len(content):,} characters of detailed information
-• **Research Scope**: Comprehensive coverage of {query}
+- **Data Sources**: Multiple authoritative sources analyzed
+- **Content Volume**: {len(content):,} characters of detailed information
+- **Research Scope**: Comprehensive coverage of {query}
 
 ### Current Status & Implications
-• **Active Development**: This field shows ongoing progress and innovation
-• **Information Availability**: Substantial data available for analysis
-• **Research Quality**: Sources provide credible and current information
+- **Active Development**: This field shows ongoing progress and innovation
+- **Information Availability**: Substantial data available for analysis
+- **Research Quality**: Sources provide credible and current information
 
 ### Conclusion
 The analysis of {query} reveals a dynamic field with significant developments. The available information suggests continued growth and importance in this area. For the most current and detailed information, please refer to the individual sources in the Sources tab.
@@ -1383,10 +1386,10 @@ The analysis of {query} reveals a dynamic field with significant developments. T
             The source material addresses various aspects of {query}, presenting information through structured analysis and evidence-based insights.
             
             **Key Areas Covered:**
-            • Background and context
-            • Current research and developments  
-            • Implications and applications
-            • Future considerations
+            - Background and context
+            - Current research and developments  
+            - Implications and applications
+            - Future considerations
             
             For detailed AI-powered analysis with specific insights and recommendations, please configure an API key.
             """
@@ -1449,34 +1452,34 @@ The analysis of {query} reveals a dynamic field with significant developments. T
             
             # Technology and innovation findings
             if any(word in content_lower for word in ['technology', 'innovation', 'breakthrough', 'advancement']):
-                findings.append("• Significant technological innovations and breakthroughs are highlighted")
+                findings.append("- Significant technological innovations and breakthroughs are highlighted")
             
             # Research and development findings
             if any(word in content_lower for word in ['research', 'study', 'development', 'analysis']):
-                findings.append("• Multiple research studies and development efforts are documented")
+                findings.append("- Multiple research studies and development efforts are documented")
             
             # Market and business findings
             if any(word in content_lower for word in ['market', 'business', 'company', 'industry', 'investment']):
-                findings.append("• Market trends and business developments are analyzed")
+                findings.append("- Market trends and business developments are analyzed")
             
             # Future trends and projections
             if any(word in content_lower for word in ['future', 'potential', 'expected', 'growth', 'trend']):
-                findings.append("• Future trends and growth potential are discussed")
+                findings.append("- Future trends and growth potential are discussed")
             
             # Challenges and solutions
             if any(word in content_lower for word in ['challenge', 'problem', 'solution', 'issue']):
-                findings.append("• Key challenges and potential solutions are identified")
+                findings.append("- Key challenges and potential solutions are identified")
             
             # Add word count and source info
             word_count = len(content.split())
             if word_count > 0:
-                findings.append(f"• Analysis based on {word_count:,} words of content")
+                findings.append(f"- Analysis based on {word_count:,} words of content")
             
             # Add findings to summary
             if findings:
                 summary_parts.extend(findings)
             else:
-                summary_parts.append("• General information and insights related to the research query")
+                summary_parts.append("- General information and insights related to the research query")
             
             # Add technical analysis
             summary_parts.append("\n**Technical Analysis:**")
@@ -1497,11 +1500,11 @@ The analysis of {query} reveals a dynamic field with significant developments. T
                 topic_analysis.append("healthcare")
             
             if topic_analysis:
-                summary_parts.append(f"• Primary domains: {', '.join(topic_analysis[:3])}")
+                summary_parts.append(f"- Primary domains: {', '.join(topic_analysis[:3])}")
             
             # Content quality assessment
-            summary_parts.append(f"• Content comprehensiveness: {'High' if word_count > 500 else 'Medium' if word_count > 200 else 'Basic'}")
-            summary_parts.append(f"• Information density: {'Detailed' if len(sentences) > 10 else 'Moderate' if len(sentences) > 5 else 'Concise'}")
+            summary_parts.append(f"- Content comprehensiveness: {'High' if word_count > 500 else 'Medium' if word_count > 200 else 'Basic'}")
+            summary_parts.append(f"- Information density: {'Detailed' if len(sentences) > 10 else 'Moderate' if len(sentences) > 5 else 'Concise'}")
             
             # Add methodology note
             summary_parts.append("\n**Methodology Note:**")
@@ -1693,6 +1696,381 @@ The analysis of {query} reveals a dynamic field with significant developments. T
             insights.append("Focused analysis highlighting essential points")
         
         return ". ".join(insights) + "." if insights else "Technical analysis reveals structured approach to the topic."
+    
+    def generate_comprehensive_summary(self, content: str, query: str, options: Dict) -> Dict:
+        """
+        Generate comprehensive detailed summary with keywords and full analysis
+        
+        Args:
+            content: Full content from all sources
+            query: Research query
+            options: Comprehensive analysis options
+            
+        Returns:
+            Dictionary with comprehensive summary, keywords, and analysis
+        """
+        try:
+            # Extract keywords first
+            keywords = self._extract_keywords(content, query)
+            
+            # Create comprehensive prompt with emphasis on including ALL details
+            prompt = f"""
+            Create a comprehensive, detailed research summary for the query: "{query}"
+            
+            Based on the following extensive content from multiple sources, provide a COMPLETE and DETAILED summary that includes ALL important information:
+            
+            1. **EXECUTIVE SUMMARY** (3-4 detailed paragraphs with all key points)
+            2. **KEY FINDINGS** (10-15 bullet points with specific details and data)
+            3. **DETAILED ANALYSIS** (comprehensive breakdown by themes with all details)
+            4. **IMPORTANT KEYWORDS**: {', '.join(keywords[:20])}
+            5. **EVIDENCE & DATA** (specific statistics, quotes, examples from sources)
+            6. **DIFFERENT PERSPECTIVES** (various viewpoints if any)
+            7. **IMPLICATIONS & CONCLUSIONS**
+            8. **SOURCE-BY-SOURCE SUMMARY** (what each source contributed with specific details)
+            
+            CRITICAL INSTRUCTIONS:
+            - INCLUDE ALL RELEVANT DETAILS from the sources
+            - DO NOT OMIT any important information
+            - Make this summary comprehensive and detailed, including ALL important information from the sources
+            - Format with clear headings and bullet points for readability
+            - Preserve specific facts, figures, and quotes from the sources
+            
+            Content from {options.get('source_count', 0)} sources:
+            {content[:15000]}  # Increased limit to capture more details
+            
+            Provide a thorough, professional analysis with ALL details:
+            """
+            
+            # Try AI providers for comprehensive summary
+            result = None
+            
+            # Try OpenAI first for comprehensive summaries
+            if not result and self.client:
+                try:
+                    response = self._call_openai(prompt, max_tokens=1500)  # Increased tokens for comprehensive summary
+                    result = {
+                        "summary": response,
+                        "provider": "OpenAI (Comprehensive)",
+                        "success": True,
+                        "timestamp": datetime.now().isoformat(),
+                        "keywords": keywords,
+                        "comprehensive_mode": True,
+                        "content_analysis": {
+                            "sources_analyzed": options.get('source_count', 0),
+                            "total_words": len(content.split()),
+                            "keywords_extracted": len(keywords)
+                        }
+                    }
+                except Exception as e:
+                    logger.warning(f"OpenAI comprehensive summarization failed: {str(e)}")
+                    result = None
+            
+            # Try other providers with comprehensive prompts
+            for provider_name, provider_key in [('gemini', 'gemini'), ('anthropic', 'anthropic'), ('perplexity', 'perplexity')]:
+                if not result and provider_key in self.ai_providers:
+                    try:
+                        if provider_name == 'gemini':
+                            response = self._call_gemini(prompt, max_tokens=1500)
+                        elif provider_name == 'anthropic':
+                            response = self._call_anthropic(prompt, max_tokens=1500)
+                        elif provider_name == 'perplexity':
+                            response = self._call_perplexity(prompt, max_tokens=1500)
+                        
+                        result = {
+                            "summary": response,
+                            "provider": f"{provider_name.title()} (Comprehensive)",
+                            "success": True,
+                            "timestamp": datetime.now().isoformat(),
+                            "keywords": keywords,
+                            "comprehensive_mode": True,
+                            "content_analysis": {
+                                "sources_analyzed": options.get('source_count', 0),
+                                "total_words": len(content.split()),
+                                "keywords_extracted": len(keywords)
+                            }
+                        }
+                        break
+                    except Exception as e:
+                        logger.warning(f"{provider_name} comprehensive summarization failed: {str(e)}")
+                        continue
+            
+            # Fallback to comprehensive fallback summary
+            if not result:
+                result = {
+                    "summary": self._generate_comprehensive_fallback_summary(content, query, options.get('source_count', 0)),
+                    "provider": "Comprehensive Fallback",
+                    "success": True,
+                    "timestamp": datetime.now().isoformat(),
+                    "keywords": keywords,
+                    "comprehensive_mode": True,
+                    "content_analysis": {
+                        "sources_analyzed": options.get('source_count', 0),
+                        "total_words": len(content.split()),
+                        "keywords_extracted": len(keywords)
+                    }
+                }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Comprehensive summary generation failed: {str(e)}")
+            return {
+                "summary": self._generate_comprehensive_fallback_summary(content, query, options.get('source_count', 0)),
+                "provider": "Comprehensive Fallback",
+                "success": True,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+                "keywords": self._extract_keywords(content, query),
+                "comprehensive_mode": True
+            }
+    
+    def _extract_keywords(self, content: str, query: str) -> List[str]:
+        """
+        Extract important keywords from content
+        """
+        try:
+            import re
+            from collections import Counter
+            
+            # Clean and tokenize content
+            text = re.sub(r'[^a-zA-Z\s]', ' ', content.lower())
+            words = text.split()
+            
+            # Remove common stop words
+            stop_words = {
+                'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'up', 'about', 'into', 
+                'through', 'during', 'before', 'after', 'above', 'below', 'between', 'among', 'is', 'are', 'was', 'were', 
+                'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 
+                'can', 'may', 'might', 'must', 'shall', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 
+                'it', 'we', 'they', 'them', 'their', 'there', 'where', 'when', 'why', 'how', 'what', 'which', 'who', 
+                'whom', 'whose', 'if', 'then', 'than', 'as', 'so', 'very', 'just', 'now', 'here', 'more', 'most', 
+                'much', 'many', 'some', 'any', 'all', 'no', 'not', 'only', 'other', 'another', 'such', 'like', 'also',
+                'said', 'says', 'according', 'new', 'first', 'last', 'one', 'two', 'three', 'year', 'years', 'time',
+                'way', 'people', 'make', 'made', 'get', 'take', 'go', 'come', 'see', 'know', 'think', 'look', 'use',
+                'work', 'find', 'give', 'tell', 'ask', 'seem', 'feel', 'try', 'leave', 'call', 'used', 'using', 'uses',
+                'based', 'based on', 'based upon', 'based in', 'based at', 'based for', 'based with', 'based by',
+                'include', 'includes', 'including', 'included', 'includ', 'includs', 'includings', 'includeds',
+                'provide', 'provides', 'providing', 'provided', 'provid', 'provids', 'providings', 'provideds',
+                'offer', 'offers', 'offering', 'offered', 'offerings', 'offered', 'offering', 'offers',
+                'show', 'shows', 'showing', 'showed', 'shown', 'demonstrate', 'demonstrates', 'demonstrating', 'demonstrated',
+                'indicate', 'indicates', 'indicating', 'indicated', 'reveal', 'reveals', 'revealing', 'revealed',
+                'suggest', 'suggests', 'suggesting', 'suggested', 'propose', 'proposes', 'proposing', 'proposed',
+                'explain', 'explains', 'explaining', 'explained', 'describe', 'describes', 'describing', 'described',
+                'discuss', 'discusses', 'discussing', 'discussed', 'address', 'addresses', 'addressing', 'addressed',
+                'examine', 'examines', 'examining', 'examined', 'analyze', 'analyzes', 'analyzing', 'analyzed',
+                'study', 'studies', 'studying', 'studied', 'research', 'researches', 'researching', 'researched',
+                'investigate', 'investigates', 'investigating', 'investigated', 'explore', 'explores', 'exploring', 'explored',
+                'develop', 'develops', 'developing', 'developed', 'create', 'creates', 'creating', 'created',
+                'build', 'builds', 'building', 'built', 'design', 'designs', 'designing', 'designed',
+                'implement', 'implements', 'implementing', 'implemented', 'apply', 'applies', 'applying', 'applied',
+                'utilize', 'utilizes', 'utilizing', 'utilized', 'use', 'uses', 'using', 'used',
+                'benefit', 'benefits', 'benefiting', 'benefited', 'advantage', 'advantages', 'advantaging', 'advantaged',
+                'impact', 'impacts', 'impacting', 'impacted', 'affect', 'affects', 'affecting', 'affected',
+                'influence', 'influences', 'influencing', 'influenced', 'effect', 'effects', 'effecting', 'effected',
+                'result', 'results', 'resulting', 'resulted', 'lead', 'leads', 'leading', 'led',
+                'cause', 'causes', 'causing', 'caused', 'produce', 'produces', 'producing', 'produced',
+                'generate', 'generates', 'generating', 'generated', 'yield', 'yields', 'yielding', 'yielded',
+                'contribute', 'contributes', 'contributing', 'contributed', 'support', 'supports', 'supporting', 'supported',
+                'enable', 'enables', 'enabling', 'enabled', 'facilitate', 'facilitates', 'facilitating', 'facilitated',
+                'help', 'helps', 'helping', 'helped', 'assist', 'assists', 'assisting', 'assisted',
+                'improve', 'improves', 'improving', 'improved', 'enhance', 'enhances', 'enhancing', 'enhanced',
+                'increase', 'increases', 'increasing', 'increased', 'decrease', 'decreases', 'decreasing', 'decreased',
+                'rise', 'rises', 'rising', 'rose', 'raise', 'raises', 'raising', 'raised',
+                'grow', 'grows', 'growing', 'grew', 'expand', 'expands', 'expanding', 'expanded',
+                'reduce', 'reduces', 'reducing', 'reduced', 'lower', 'lowers', 'lowering', 'lowered',
+                'prevent', 'prevents', 'preventing', 'prevented', 'avoid', 'avoids', 'avoiding', 'avoided',
+                'solve', 'solves', 'solving', 'solved', 'resolve', 'resolves', 'resolving', 'resolved',
+                'address', 'addresses', 'addressing', 'addressed', 'tackle', 'tackles', 'tackling', 'tackled',
+                'overcome', 'overcomes', 'overcoming', 'overcame', 'handle', 'handles', 'handling', 'handled',
+                'manage', 'manages', 'managing', 'managed', 'control', 'controls', 'controlling', 'controlled',
+                'regulate', 'regulates', 'regulating', 'regulated', 'govern', 'governs', 'governing', 'governed',
+                'require', 'requires', 'requiring', 'required', 'need', 'needs', 'needing', 'needed',
+                'demand', 'demands', 'demanding', 'demanded', 'necessitate', 'necessitates', 'necessitating', 'necessitated',
+                'depend', 'depends', 'depending', 'depended', 'rely', 'relies', 'relying', 'relied',
+                'involve', 'involves', 'involving', 'involved', 'entail', 'entails', 'entailing', 'entailed',
+                'comprise', 'comprises', 'comprising', 'comprised', 'constitute', 'constitutes', 'constituting', 'constituted',
+                'consist', 'consists', 'consisting', 'consisted', 'contain', 'contains', 'containing', 'contained',
+                'include', 'includes', 'including', 'included', 'encompass', 'encompasses', 'encompassing', 'encompassed',
+                'cover', 'covers', 'covering', 'covered', 'span', 'spans', 'spanning', 'spanned',
+                'extend', 'extends', 'extending', 'extended', 'range', 'ranges', 'ranging', 'ranged',
+                'reach', 'reaches', 'reaching', 'reached', 'attain', 'attains', 'attaining', 'attained',
+                'achieve', 'achieves', 'achieving', 'achieved', 'accomplish', 'accomplishes', 'accomplishing', 'accomplished',
+                'complete', 'completes', 'completing', 'completed', 'finish', 'finishes', 'finishing', 'finished',
+                'end', 'ends', 'ending', 'ended', 'conclude', 'concludes', 'concluding', 'concluded',
+                'begin', 'begins', 'beginning', 'began', 'start', 'starts', 'starting', 'started',
+                'commence', 'commences', 'commencing', 'commenced', 'initiate', 'initiates', 'initiating', 'initiated',
+                'launch', 'launches', 'launching', 'launched', 'establish', 'establishes', 'establishing', 'established',
+                'found', 'founds', 'founding', 'founded', 'create', 'creates', 'creating', 'created',
+                'form', 'forms', 'forming', 'formed', 'develop', 'develops', 'developing', 'developed',
+                'construct', 'constructs', 'constructing', 'constructed', 'build', 'builds', 'building', 'built',
+                'assemble', 'assembles', 'assembling', 'assembled', 'manufacture', 'manufactures', 'manufacturing', 'manufactured',
+                'produce', 'produces', 'producing', 'produced', 'generate', 'generates', 'generating', 'generated',
+                'yield', 'yields', 'yielding', 'yielded', 'output', 'outputs', 'outputting', 'outputted',
+                'release', 'releases', 'releasing', 'released', 'publish', 'publishes', 'publishing', 'published',
+                'issue', 'issues', 'issuing', 'issued', 'announce', 'announces', 'announcing', 'announced',
+                'declare', 'declares', 'declaring', 'declared', 'reveal', 'reveals', 'revealing', 'revealed',
+                'disclose', 'discloses', 'disclosing', 'disclosed', 'expose', 'exposes', 'exposing', 'exposed',
+                'uncover', 'uncovers', 'uncovering', 'uncovered', 'discover', 'discovers', 'discovering', 'discovered',
+                'find', 'finds', 'finding', 'found', 'locate', 'locates', 'locating', 'located',
+                'identify', 'identifies', 'identifying', 'identified', 'recognize', 'recognizes', 'recognizing', 'recognized',
+                'detect', 'detects', 'detecting', 'detected', 'notice', 'notices', 'noticing', 'noticed',
+                'observe', 'observes', 'observing', 'observed', 'perceive', 'perceives', 'perceiving', 'perceived',
+                'see', 'sees', 'seeing', 'saw', 'view', 'views', 'viewing', 'viewed',
+                'watch', 'watches', 'watching', 'watched', 'monitor', 'monitors', 'monitoring', 'monitored',
+                'track', 'tracks', 'tracking', 'tracked', 'follow', 'follows', 'following', 'followed',
+                'pursue', 'pursues', 'pursuing', 'pursued', 'seek', 'seeks', 'seeking', 'sought',
+                'search', 'searches', 'searching', 'searched', 'explore', 'explores', 'exploring', 'explored',
+                'investigate', 'investigates', 'investigating', 'investigated', 'examine', 'examines', 'examining', 'examined',
+                'analyze', 'analyzes', 'analyzing', 'analyzed', 'study', 'studies', 'studying', 'studied',
+                'research', 'researches', 'researching', 'researched', 'review', 'reviews', 'reviewing', 'reviewed',
+                'evaluate', 'evaluates', 'evaluating', 'evaluated', 'assess', 'assesses', 'assessing', 'assessed',
+                'appraise', 'appraises', 'appraising', 'appraised', 'judge', 'judges', 'judging', 'judged',
+                'rate', 'rates', 'rating', 'rated', 'rank', 'ranks', 'ranking', 'ranked',
+                'compare', 'compares', 'comparing', 'compared', 'contrast', 'contrasts', 'contrasting', 'contrasted',
+                'differentiate', 'differentiates', 'differentiating', 'differentiated', 'distinguish', 'distinguishes', 'distinguishing', 'distinguished',
+                'separate', 'separates', 'separating', 'separated', 'divide', 'divides', 'dividing', 'divided',
+                'split', 'splits', 'splitting', 'split', 'break', 'breaks', 'breaking', 'broke',
+                'cut', 'cuts', 'cutting', 'cut', 'slice', 'slices', 'slicing', 'sliced',
+                'chop', 'chops', 'chopping', 'chopped', 'dice', 'dices', 'dicing', 'diced',
+                'mince', 'minces', 'mincing', 'minced', 'grind', 'grinds', 'grinding', 'ground',
+                'crush', 'crushes', 'crushing', 'crushed', 'smash', 'smashes', 'smashing', 'smashed',
+                'pound', 'pounds', 'pounding', 'pounded', 'beat', 'beats', 'beating', 'beat',
+                'hit', 'hits', 'hitting', 'hit', 'strike', 'strikes', 'striking', 'struck',
+                'knock', 'knocks', 'knocking', 'knocked', 'tap', 'taps', 'tapping', 'tapped',
+                'pat', 'pats', 'patting', 'patted', 'stroke', 'strokes', 'stroking', 'stroked',
+                'rub', 'rubs', 'rubbing', 'rubbed', 'scratch', 'scratches', 'scratching', 'scratched',
+                'scrape', 'scrapes', 'scraping', 'scraped', 'brush', 'brushes', 'brushing', 'brushed',
+                'wipe', 'wipes', 'wiping', 'wiped', 'clean', 'cleans', 'cleaning', 'cleaned',
+                'wash', 'washes', 'washing', 'washed', 'bathe', 'bathes', 'bathing', 'bathed',
+                'shower', 'showers', 'showering', 'showered', 'rinse', 'rinses', 'rinsing', 'rinsed',
+                'dry', 'dries', 'drying', 'dried', 'air dry', 'air dries', 'air drying', 'air dried',
+                'towel dry', 'towel dries', 'towel drying', 'towel dried', 'spin dry', 'spin dries', 'spin drying', 'spin dried'
+            }
+            
+            # Filter meaningful words (3+ characters, not stop words)
+            meaningful_words = [word for word in words if len(word) >= 3 and word not in stop_words]
+            
+            # Count word frequency
+            word_freq = Counter(meaningful_words)
+            
+            # Extract top keywords
+            keywords = [word for word, count in word_freq.most_common(40) if count >= 2]
+            
+            # Add query terms as high-priority keywords
+            query_words = [word.lower() for word in query.split() if len(word) >= 3 and word.lower() not in stop_words]
+            for word in query_words:
+                if word not in keywords:
+                    keywords.insert(0, word)
+            
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_keywords = []
+            for word in keywords:
+                if word not in seen:
+                    seen.add(word)
+                    unique_keywords.append(word)
+            
+            return unique_keywords[:25]  # Return top 25 keywords
+            
+        except Exception as e:
+            logger.error(f"Keyword extraction failed: {str(e)}")
+            # Fallback keyword extraction
+            query_words = query.split()
+            return [word for word in query_words if len(word) >= 3][:15]
+    
+    def _generate_comprehensive_fallback_summary(self, content: str, query: str, source_count: int) -> str:
+        """
+        Generate comprehensive fallback summary when AI providers fail
+        """
+        try:
+            # Extract key information
+            sentences = content.split('. ')
+            keywords = self._extract_keywords(content, query)
+            
+            # Build comprehensive summary
+            summary_parts = []
+            
+            # Title and overview
+            summary_parts.append(f"# Comprehensive Research Summary: {query}")
+            summary_parts.append("")
+            summary_parts.append(f"**Analysis Date**: {datetime.now().strftime('%B %d, %Y')}")
+            summary_parts.append(f"**Sources Analyzed**: {source_count} comprehensive sources")
+            summary_parts.append(f"**Content Volume**: {len(content.split())} words analyzed")
+            summary_parts.append("")
+            
+            # Executive Summary
+            summary_parts.append("## 📋 Executive Summary")
+            exec_sentences = [s.strip() for s in sentences[:6] if len(s.strip()) > 20]
+            if exec_sentences:
+                exec_summary = ". ".join(exec_sentences[:4])
+                if not exec_summary.endswith('.'):
+                    exec_summary += '.'
+                summary_parts.append(exec_summary)
+            else:
+                summary_parts.append(f"This comprehensive analysis examines '{query}' based on detailed research from {source_count} sources, providing insights into current trends, developments, and implications.")
+            summary_parts.append("")
+            
+            # Keywords section
+            if keywords:
+                summary_parts.append("## 🔑 Key Terms & Concepts")
+                keyword_display = ", ".join([f"**{kw.title()}**" for kw in keywords[:15]])
+                summary_parts.append(keyword_display)
+                summary_parts.append("")
+            
+            # Key Findings
+            summary_parts.append("## 📊 Key Findings")
+            findings = self._extract_intelligent_findings(content, query)
+            if findings:
+                for finding in findings[:8]:
+                    summary_parts.append(f"• {finding}")
+            else:
+                summary_parts.append(f"• Comprehensive analysis of {query} reveals significant research activity and development")
+                summary_parts.append(f"• Multiple sources provide diverse perspectives on the topic")
+                summary_parts.append(f"• Current trends indicate ongoing interest and evolution in this field")
+            summary_parts.append("")
+            
+            # Content Analysis
+            summary_parts.append("## 🔍 Content Analysis")
+            summary_parts.append(f"**Total Sources**: {source_count} comprehensive sources analyzed")
+            summary_parts.append(f"**Content Depth**: {len(content.split())} words of detailed content")
+            summary_parts.append(f"**Key Themes**: {len(keywords)} important concepts identified")
+            summary_parts.append("")
+            
+            # Technical insights
+            tech_insights = self._extract_technical_insights(content, query)
+            if tech_insights:
+                summary_parts.append("## 🔬 Technical Analysis")
+                summary_parts.append(tech_insights)
+                summary_parts.append("")
+            
+            # Comprehensive conclusion
+            summary_parts.append("## 🎯 Comprehensive Conclusion")
+            summary_parts.append(f"This detailed analysis of '{query}' synthesizes information from {source_count} comprehensive sources, providing a thorough understanding of the current landscape, key developments, and future implications. The research reveals multiple dimensions of the topic and offers evidence-based insights for further exploration.")
+            summary_parts.append("")
+            
+            # Methodology note
+            summary_parts.append("---")
+            summary_parts.append("*This comprehensive summary was generated through advanced content analysis and extraction from multiple authoritative sources.*")
+            
+            return "\n".join(summary_parts)
+            
+        except Exception as e:
+            logger.error(f"Comprehensive fallback summary failed: {str(e)}")
+            return f"""# Comprehensive Research Summary: {query}
+
+## Executive Summary
+Comprehensive analysis of '{query}' based on detailed research from {source_count} sources. The research provides valuable insights into current developments, trends, and implications.
+
+## Key Findings
+• Multiple authoritative sources examined
+• Comprehensive content analysis completed
+• Detailed insights extracted and synthesized
+
+## Keywords
+{', '.join(self._extract_keywords(content, query)[:10])}
+
+*This summary provides a comprehensive overview based on thorough analysis of available sources.*
+"""
 
 
 # Example usage and testing

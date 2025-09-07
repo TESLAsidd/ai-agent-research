@@ -492,6 +492,87 @@ def safe_api_call(func, *args, **kwargs):
         logger.error(f"API call failed: {str(e)}")
         return {"error": str(e), "success": False}
 
+def display_follow_up_questions(results):
+    """Display follow-up questions in an interactive format"""
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
+        <h2 style="margin: 0; font-size: 1.8rem;">❓ Follow-up Questions</h2>
+        <p style="margin: 0.5rem 0 0 0; font-size: 1.1rem; opacity: 0.9;">Explore deeper insights about "{results['query']}"</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    follow_up_questions = results.get('follow_up_questions', [])
+    
+    if follow_up_questions:
+        st.markdown("### 🤔 Suggested Questions for Further Research")
+        st.markdown("Click on any question to explore it further:")
+        
+        # Display questions in an interactive grid with better styling
+        cols = st.columns(2)
+        
+        for i, question in enumerate(follow_up_questions):
+            with cols[i % 2]:
+                # Enhanced button styling
+                button_style = """
+                <style>
+                div.stButton > button:first-child {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 1rem;
+                    font-size: 0.95rem;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                    text-align: left;
+                    height: auto;
+                    white-space: normal;
+                    margin-bottom: 0.5rem;
+                }
+                div.stButton > button:first-child:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+                    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+                }
+                </style>
+                """
+                st.markdown(button_style, unsafe_allow_html=True)
+                
+                if st.button(f"🔍 {question}", key=f"followup_{i}", use_container_width=True):
+                    # When clicked, populate the search box with this question
+                    st.session_state.search_query = question
+                    st.success(f"Ready to research: {question}")
+                    st.info("Click the 'Start Research' button above to begin exploring this question.")
+                    st.rerun()  # Refresh to update the search box
+        
+        st.markdown("---")
+        st.markdown("### 💡 Create Your Own Question")
+        st.markdown("Have a specific aspect you want to explore further?")
+        
+        # Pre-fill with query for context
+        custom_question = st.text_input("Enter your custom research question:", 
+                                       placeholder=f"e.g., What are the implications of {results['query']} for...?",
+                                       key="custom_followup_question")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            custom_question_full = st.text_area("Or write a more detailed question:", 
+                                               placeholder=f"Write a detailed research question about {results['query']}...",
+                                               height=100,
+                                               key="custom_followup_question_detailed")
+        with col2:
+            st.markdown(" ")
+            st.markdown(" ")
+            if st.button("Research Custom Question") and (custom_question or custom_question_full):
+                final_question = custom_question_full if custom_question_full else custom_question
+                st.session_state.search_query = final_question
+                st.success(f"Ready to research: {final_question}")
+                st.info("Click the 'Start Research' button above to begin your custom research.")
+                st.rerun()  # Refresh to update the search box
+    else:
+        st.info("No follow-up questions generated for this research topic. Try a different query for more insights.")
+
 def main():
     """Enhanced main application with modern styling and theme support"""
     
@@ -744,8 +825,8 @@ def main():
                 
                 progress.progress(40)
                 
-                # Step 2: Fast content extraction with parallel processing
-                status.text("📄 Extracting content (parallel processing)...")
+                # Step 2: Enhanced content extraction for comprehensive summaries
+                status.text("📄 Extracting comprehensive content from all sources...")
                 extracted_content = []
                 results_list = []  # Initialize results_list
                 
@@ -753,58 +834,109 @@ def main():
                     extractor = ContentExtractor()
                     results_list = search_results if isinstance(search_results, list) else search_results.get('search_results', [])
                     
-                    # Speed optimization: Extract from fewer sources in parallel
-                    max_extraction = 3 if "Quick" in search_speed else 5
+                    # Extract from ALL sources for comprehensive summaries
+                    max_extraction = len(results_list)  # Get ALL content, not limited
                     
-                    for result in results_list[:max_extraction]:
+                    for i, result in enumerate(results_list[:max_extraction]):
+                        status.text(f"📄 Extracting content from source {i+1}/{min(max_extraction, len(results_list))}...")
                         content = safe_api_call(extractor.extract_from_url, result.get('url', ''))
                         if content and content.get('success'):
-                            extracted_content.append(content)
-                        # Speed optimization: Break early if we have enough content
-                        if len(extracted_content) >= 2 and "Quick" in search_speed:
-                            break
+                            # Store full content, not truncated
+                            full_content = {
+                                'content': content.get('content', ''),
+                                'title': result.get('title', ''),
+                                'url': result.get('url', ''),
+                                'snippet': result.get('snippet', ''),
+                                'domain': result.get('domain', ''),
+                                'word_count': len(content.get('content', '').split())
+                            }
+                            extracted_content.append(full_content)
+                        
+                        # Update progress for each extraction
+                        progress.progress(40 + (i * 20 // max_extraction))
                 
                 progress.progress(60)
                 
-                # Step 3: AI Summarization with enhanced options
-                status.text("🧠 Generating AI summary...")
+                # Step 3: Comprehensive AI Summarization with full content
+                status.text("🧠 Generating comprehensive detailed summary with keywords...")
                 
-                if "Quick" in search_speed:
-                    # Quick mode: Use only search snippets for maximum speed (2-5 seconds)
-                    search_text = " ".join([result.get('snippet', '')[:150] for result in results_list[:3]])[:800]  # Ultra-reduced for speed
-                    combined_text = search_text
+                # Combine ALL extracted content for comprehensive summary
+                if extracted_content:
+                    # Combine full content from all sources
+                    full_content_parts = []
+                    for content in extracted_content:
+                        content_text = content.get('content', '')
+                        title = content.get('title', '')
+                        url = content.get('url', '')
+                        
+                        # Add source context
+                        source_section = f"\n\n=== SOURCE: {title} ===\nURL: {url}\nContent:\n{content_text}\n\n"
+                        full_content_parts.append(source_section)
+                    
+                    # Also include search snippets for additional context
+                    snippet_parts = []
+                    for result in results_list:
+                        snippet = result.get('snippet', '')
+                        if snippet:
+                            snippet_parts.append(f"• {snippet}")
+                    
+                    combined_text = "".join(full_content_parts)
+                    if snippet_parts:
+                        combined_text += "\n\n=== ADDITIONAL SEARCH SNIPPETS ===\n" + "\n".join(snippet_parts)
+                    
+                    # Limit total length but keep comprehensive
+                    if len(combined_text) > 15000:  # Increased limit for comprehensive summaries
+                        combined_text = combined_text[:15000] + "\n\n[Content truncated for processing efficiency]"
                 else:
-                    # Advanced mode: Balanced extraction with speed focus (8-15 seconds)
-                    if extracted_content:
-                        combined_text = " ".join([content.get('content', '')[:600] for content in extracted_content[:2]])[:1500]  # Reduced for speed
-                    else:
-                        # Fallback to search snippets
-                        combined_text = " ".join([result.get('snippet', '')[:200] for result in results_list[:5]])[:1200]
+                    # Fallback to detailed search snippets
+                    snippet_details = []
+                    for result in results_list:
+                        title = result.get('title', '')
+                        snippet = result.get('snippet', '')
+                        url = result.get('url', '')
+                        snippet_details.append(f"Title: {title}\nURL: {url}\nSnippet: {snippet}\n---")
+                    
+                    combined_text = "\n\n".join(snippet_details)
                 
                 if combined_text:
                     try:
                         summarizer = AISummarizer()
                         
+                        # Enhanced summary options for comprehensive output
                         summary_options = {
-                            'detailed_formatting': detailed_formatting,
-                            'include_tables': include_tables,
-                            'include_bullet_points': include_bullet_points,
+                            'detailed_formatting': True,  # Always use detailed formatting
+                            'include_tables': True,
+                            'include_bullet_points': True,
+                            'include_keywords': True,  # New option for keywords
+                            'comprehensive_mode': True,  # New option for detailed summaries
                             'search_speed': search_speed,
-                            'summary_type': summary_type
+                            'summary_type': 'comprehensive',  # Always comprehensive
+                            'source_count': len(extracted_content),
+                            'total_content_length': len(combined_text)
                         }
                         
-                        summary = summarizer.generate_structured_summary(combined_text, query, summary_options)
+                        # Generate comprehensive summary
+                        summary = summarizer.generate_comprehensive_summary(combined_text, query, summary_options)
                         
+                        if not summary.get('success'):
+                            summary = summarizer.generate_structured_summary(combined_text, query, summary_options)
+                            
                         if not summary.get('success'):
                             summary = summarizer.summarize_content(combined_text, query)
                             
-                        # Ensure summary is always successful
+                        # Ensure summary is always successful with comprehensive content
                         if not summary.get('success'):
                             summary = {
-                                "summary": summarizer._generate_enhanced_fallback_summary(combined_text, query),
+                                "summary": summarizer._generate_comprehensive_fallback_summary(combined_text, query, len(extracted_content)),
                                 "success": True,
-                                "provider": "Enhanced Fallback",
-                                "timestamp": datetime.now().isoformat()
+                                "provider": "Comprehensive Fallback",
+                                "timestamp": datetime.now().isoformat(),
+                                "keywords": summarizer._extract_keywords(combined_text, query),
+                                "content_analysis": {
+                                    "sources_analyzed": len(extracted_content),
+                                    "total_words": len(combined_text.split()),
+                                    "comprehensive_mode": True
+                                }
                             }
                     except Exception as e:
                         logger.error(f"Summarization error: {str(e)}")
@@ -859,7 +991,7 @@ def main():
                 
                 status.success(success_msg)
                 
-                # Store results
+                # Store results with enhanced information
                 st.session_state.research_results = {
                     'query': query,
                     'search_results': search_results,
@@ -870,6 +1002,8 @@ def main():
                     'timestamp': datetime.now(),
                     'mode': search_mode,
                     'search_speed': search_speed,
+                    'keywords': summary.get('keywords', []),
+                    'content_analysis': summary.get('content_analysis', {}),
                     'settings': {
                         'num_results': num_results,
                         'include_images': include_images,
@@ -880,6 +1014,11 @@ def main():
                         'include_bullet_points': include_bullet_points
                     }
                 }
+                
+                # Generate follow-up questions
+                keywords = summary.get('keywords', [])
+                follow_up_questions = generate_follow_up_questions(query, summary, keywords)
+                st.session_state.research_results['follow_up_questions'] = follow_up_questions
                 
                 time.sleep(1)
                 progress.empty()
@@ -892,6 +1031,118 @@ def main():
     # Display results with enhanced styling
     if st.session_state.research_results:
         display_enhanced_results(st.session_state.research_results)
+
+def generate_follow_up_questions(query: str, summary: Dict, keywords: List[str]) -> List[str]:
+    """
+    Generate intelligent follow-up questions based on the research summary
+    """
+    try:
+        questions = []
+        
+        # Extract key themes from summary
+        summary_text = summary.get('summary', '').lower()
+        
+        # Generate topic-specific questions with more variety
+        if any(term in query.lower() for term in ['technology', 'ai', 'artificial intelligence', 'machine learning']):
+            questions.extend([
+                f"What are the latest breakthrough developments in {query}?",
+                f"How is {query} being implemented across different industries?",
+                f"What are the potential risks and benefits of {query}?",
+                f"What future trends and innovations can we expect in {query}?",
+                f"What are the ethical considerations surrounding {query}?",
+                f"How does {query} compare to alternative approaches?",
+                f"What are the technical challenges in implementing {query}?",
+                f"What research is currently being conducted on {query}?"
+            ])
+        
+        if any(term in query.lower() for term in ['market', 'business', 'economy', 'finance']):
+            questions.extend([
+                f"What is the current market size and growth potential for {query}?",
+                f"Who are the key players and competitors in the {query} market?",
+                f"What are the investment opportunities in {query}?",
+                f"How is {query} affecting consumer behavior and preferences?",
+                f"What are the regulatory considerations for {query}?",
+                f"What are the supply chain implications of {query}?",
+                f"How is {query} disrupting traditional business models?",
+                f"What are the global market trends for {query}?"
+            ])
+        
+        if any(term in query.lower() for term in ['health', 'medical', 'medicine', 'treatment']):
+            questions.extend([
+                f"What are the latest clinical trial results for {query}?",
+                f"How does {query} compare to existing treatments and therapies?",
+                f"What are the side effects or limitations of {query}?",
+                f"When will {query} be widely available to patients?",
+                f"What are the regulatory approval processes for {query}?",
+                f"How effective is {query} across different patient populations?",
+                f"What are the cost implications of {query}?",
+                f"What research is being conducted to improve {query}?"
+            ])
+        
+        if any(term in query.lower() for term in ['climate', 'environment', 'sustainability', 'green']):
+            questions.extend([
+                f"What are the latest findings on {query} and its impacts?",
+                f"What solutions are being developed to address {query}?",
+                f"How is {query} affecting different regions of the world?",
+                f"What policies are being implemented regarding {query}?",
+                f"What are the economic implications of {query}?",
+                f"How can individuals contribute to addressing {query}?",
+                f"What technological innovations are helping with {query}?",
+                f"What are the long-term projections for {query}?"
+            ])
+        
+        # Generate keyword-based questions
+        if keywords:
+            for keyword in keywords[:5]:  # Use top 5 keywords
+                questions.append(f"Can you explain more about {keyword.title()} in relation to {query}?")
+                questions.append(f"How does {keyword.title()} impact the future of {query}?")
+                questions.append(f"What are the recent developments in {keyword.title()} within {query}?")
+        
+        # Generate analysis-based questions
+        if 'challenge' in summary_text or 'problem' in summary_text or 'issue' in summary_text:
+            questions.append(f"What are the main challenges and obstacles facing {query}?")
+            questions.append(f"How can these challenges be effectively overcome?")
+            questions.append(f"What resources are needed to address these challenges?")
+        
+        if 'opportunity' in summary_text or 'potential' in summary_text or 'benefit' in summary_text:
+            questions.append(f"What opportunities does {query} present for different sectors?")
+            questions.append(f"How can organizations and individuals capitalize on {query}?")
+            questions.append(f"What are the long-term benefits of {query}?")
+        
+        if 'trend' in summary_text or 'future' in summary_text or 'prediction' in summary_text:
+            questions.append(f"What are the emerging trends in {query}?")
+            questions.append(f"How is {query} expected to evolve in the coming years?")
+            questions.append(f"What factors will influence the future of {query}?")
+        
+        # Generic insightful questions
+        questions.extend([
+            f"What are the global implications and effects of {query}?",
+            f"How has {query} evolved over the past few years?",
+            f"What research and studies have been conducted on {query}?",
+            f"How does {query} compare internationally across different countries?",
+            f"What do experts and researchers predict about {query}?",
+            f"What are the different approaches to addressing {query}?",
+            f"What role do different stakeholders play in {query}?",
+            f"What are the key factors driving changes in {query}?"
+        ])
+        
+        # Remove duplicates and return top 10-12 questions
+        unique_questions = list(dict.fromkeys(questions))  # Preserves order while removing duplicates
+        return unique_questions[:12]
+        
+    except Exception as e:
+        logger.error(f"Follow-up question generation failed: {str(e)}")
+        # Return more diverse fallback questions
+        return [
+            f"What are the latest developments and breakthroughs in {query}?",
+            f"How does {query} impact different industries and sectors?",
+            f"What are the future trends and predictions for {query}?",
+            f"What are the main challenges and how can they be addressed?",
+            f"What opportunities does {query} present for innovation?",
+            f"How is {query} being regulated and what are the policies?",
+            f"What research is currently being conducted on {query}?",
+            f"How does {query} compare globally across different regions?"
+        ]
 
 def display_enhanced_results(results):
     """Display results with enhanced styling"""
@@ -925,13 +1176,14 @@ def display_enhanced_results(results):
             </div>
             ''', unsafe_allow_html=True)
     
-    # Enhanced tabs (keep all existing functionality)
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    # Enhanced tabs with follow-up questions
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📝 Summary", 
         "🔍 Sources", 
         "🖼️ Images", 
         "📈 Trends", 
-        "📄 Export"
+        "📄 Export",
+        "❓ Follow-up Questions"
     ])
     
     with tab1:
@@ -954,6 +1206,9 @@ def display_enhanced_results(results):
     with tab5:
         from app_working import display_export_section
         display_export_section(results)
+    
+    with tab6:
+        display_follow_up_questions(results)
 
 if __name__ == "__main__":
     # Network access information with theme support

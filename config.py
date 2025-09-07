@@ -72,7 +72,7 @@ class Config:
             'total_available': 0
         }
         
-        # Check AI providers
+        # Check AI providers - enhanced validation
         if cls.OPENAI_API_KEY and cls.OPENAI_API_KEY.startswith('sk-'):
             valid_keys['ai_providers'].append('OpenAI')
             
@@ -82,8 +82,21 @@ class Config:
         if cls.ANTHROPIC_API_KEY and cls.ANTHROPIC_API_KEY.startswith('sk-ant-'):
             valid_keys['ai_providers'].append('Anthropic')
         
-        if cls.GEMINI_API_KEY and not cls.GEMINI_API_KEY.endswith('_here'):
+        if cls.GEMINI_API_KEY and cls.GEMINI_API_KEY.startswith('AIza'):  # More specific validation
             valid_keys['ai_providers'].append('Gemini')
+        
+        # Check additional free AI providers
+        if cls.HUGGINGFACE_API_KEY and cls.HUGGINGFACE_API_KEY.startswith('hf_'):
+            valid_keys['ai_providers'].append('Hugging Face')
+            
+        if cls.COHERE_API_KEY and cls.COHERE_API_KEY.startswith('co-'):
+            valid_keys['ai_providers'].append('Cohere')
+            
+        if cls.TOGETHER_API_KEY and cls.TOGETHER_API_KEY.startswith('together_'):
+            valid_keys['ai_providers'].append('Together AI')
+            
+        if cls.OLLAMA_ENABLED == 'true':
+            valid_keys['ai_providers'].append('Ollama (Local)')
         
         # Check search engines
         if cls.SERPAPI_API_KEY and len(cls.SERPAPI_API_KEY) > 20:
