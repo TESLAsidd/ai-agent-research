@@ -582,13 +582,26 @@ def display_summary_section(results):
         
         with col2:
             if summary.get('keywords'):
-                st.markdown("**🔑 Keywords:** " + ", ".join(summary['keywords'][:10]))
+                # Display more keywords with better formatting
+                keywords = summary['keywords'][:15]  # Increase from 10 to 15
+                st.markdown("**🔑 Keywords:** " + ", ".join([f"`{kw}`" for kw in keywords]))
         
         st.divider()
         
-        # Display the enhanced structured summary
+        # Display the enhanced structured summary with proper formatting
         summary_text = summary.get('summary', 'No summary content available')
-        st.markdown(summary_text)
+        
+        # Ensure the summary text is properly formatted and displayed
+        if summary_text:
+            # Check if it's already markdown formatted
+            if summary_text.startswith("#") or "##" in summary_text:
+                # It's already markdown formatted, display as is
+                st.markdown(summary_text)
+            else:
+                # Add basic formatting for plain text
+                st.markdown(f"## Research Summary\n\n{summary_text}")
+        else:
+            st.warning("No summary content available")
     
     else:
         st.warning("❌ Summary generation encountered issues")
