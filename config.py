@@ -10,7 +10,7 @@ load_dotenv()
 
 class Config:
     # ⚡ PRIMARY AI PROVIDERS ⚡
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # DISABLED - quota exceeded
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # ✅ ACTIVE
     PERPLEXITY_API_KEY = os.getenv('PERPLEXITY_API_KEY')  # ✅ ACTIVE
     ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')  # ✅ ACTIVE
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')  # 🆓 AVAILABLE
@@ -73,10 +73,8 @@ class Config:
         }
         
         # Check AI providers
-        if cls.OPENAI_API_KEY and cls.OPENAI_API_KEY.startswith('sk-') and 'DISABLED' not in cls.OPENAI_API_KEY:
+        if cls.OPENAI_API_KEY and cls.OPENAI_API_KEY.startswith('sk-'):
             valid_keys['ai_providers'].append('OpenAI')
-        elif cls.OPENAI_API_KEY and 'DISABLED' in cls.OPENAI_API_KEY:
-            valid_keys['issues'].append('OpenAI key disabled (quota exceeded)')
             
         if cls.PERPLEXITY_API_KEY and cls.PERPLEXITY_API_KEY.startswith('pplx-'):
             valid_keys['ai_providers'].append('Perplexity')

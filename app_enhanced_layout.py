@@ -510,17 +510,52 @@ def main():
         st.session_state.theme_mode = "night" if st.session_state.theme_mode == "day" else "day"
         st.rerun()
     
-    # Enhanced header
-    st.markdown('''
+    # Enhanced header with AI restoration notice
+    try:
+        config = Config()
+        validation = config.validate_api_keys()
+        ai_providers = validation.get('ai_providers', [])
+        
+        if 'OpenAI' in ai_providers:
+            ai_notice = '<div style="text-align: center; color: #4ade80; font-size: 1.1rem; margin: 1rem 0;">🎉 AI Summaries Restored with OpenAI + Multi-Provider Fallbacks 🚀</div>'
+        elif len(ai_providers) >= 2:
+            ai_notice = '<div style="text-align: center; color: #60a5fa; font-size: 1.1rem; margin: 1rem 0;">⚡ Enhanced AI Summaries Active with Multiple Providers</div>'
+        elif len(ai_providers) >= 1:
+            ai_notice = '<div style="text-align: center; color: #34d399; font-size: 1.1rem; margin: 1rem 0;">✅ AI Summaries Active</div>'
+        else:
+            ai_notice = ''
+    except:
+        ai_notice = ''
+    
+    st.markdown(f'''
     <div class="main-header">
         <h1>🤖 AI Research Agent</h1>
         <h3>Intelligent Analysis • Quick & Advanced Search • Structured Reports</h3>
+        {ai_notice}
     </div>
     ''', unsafe_allow_html=True)
     
-    # Feature status badge
+    # Feature status badge with enhanced AI info
     feature_count = sum([CORE_MODULES_AVAILABLE, ENHANCED_FEATURES_AVAILABLE, HISTORICAL_DATA_AVAILABLE, IMAGE_PROCESSING_AVAILABLE])
-    status_text = f"⚡ {feature_count}/4 FEATURE SETS ACTIVE: Lightning Quick Search (2-8s) • Advanced Search (8-20s) • Structured Analysis • Professional Export"
+    
+    # Check AI provider status for enhanced messaging
+    try:
+        config = Config()
+        validation = config.validate_api_keys()
+        ai_count = len(validation.get('ai_providers', []))
+        
+        if ai_count >= 4:
+            ai_status = "✨ Multi-AI Active (Premium Quality)"
+        elif ai_count >= 2:
+            ai_status = "🔥 Enhanced AI Active"
+        elif ai_count >= 1:
+            ai_status = "✅ AI Summaries Active"
+        else:
+            ai_status = "⚠️ Fallback Mode"
+            
+        status_text = f"⚡ {feature_count}/4 FEATURE SETS ACTIVE: {ai_status} • Lightning Quick Search (2-8s) • Advanced Search (8-20s) • Structured Analysis • Professional Export"
+    except:
+        status_text = f"⚡ {feature_count}/4 FEATURE SETS ACTIVE: Lightning Quick Search (2-8s) • Advanced Search (8-20s) • Structured Analysis • Professional Export"
     
     st.markdown(f'''
     <div class="feature-badge">
@@ -551,9 +586,60 @@ def main():
             </div>
             ''', unsafe_allow_html=True)
             
-            st.write(f"**Working APIs:** {validation.get('working_count', 0)}")
-            if validation.get('search_engines'):
-                st.write(f"🔍 **Search:** {', '.join(validation['search_engines'])}")
+            # Show enhanced status with restored APIs
+            ai_providers = validation.get('ai_providers', [])
+            search_engines = validation.get('search_engines', [])
+            working_count = validation.get('working_count', 0)
+            
+            # Status indicator with enhanced info
+            if working_count > 8:
+                status_color = "green"
+                status_text = "🎉 EXCELLENT"
+            elif working_count > 5:
+                status_color = "blue"
+                status_text = "✅ GOOD"
+            elif working_count > 2:
+                status_color = "orange"
+                status_text = "⚠️ LIMITED"
+            else:
+                status_color = "red"
+                status_text = "❌ CRITICAL"
+            
+            st.markdown(f'''
+            <div style="background: {status_color}; color: white; padding: 0.8rem; border-radius: 10px; text-align: center; margin: 0.5rem 0;">
+                <strong>{status_text}</strong><br/>
+                {working_count} APIs Active
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Show AI providers with enhanced display
+            if ai_providers:
+                st.markdown("**🧠 AI Providers:**")
+                ai_status = []
+                if 'OpenAI' in ai_providers:
+                    ai_status.append('🔥 OpenAI (Restored)')
+                if 'Gemini' in ai_providers:
+                    ai_status.append('🔮 Gemini (Free)')
+                if 'Anthropic' in ai_providers:
+                    ai_status.append('🧠 Claude')
+                if 'Perplexity' in ai_providers:
+                    ai_status.append('⚡ Perplexity')
+                for provider in ai_providers:
+                    if provider not in ['OpenAI', 'Gemini', 'Anthropic', 'Perplexity']:
+                        ai_status.append(f'✨ {provider}')
+                
+                for status in ai_status:
+                    st.write(f"  {status}")
+            
+            # Show search engines
+            if search_engines:
+                st.write(f"🔍 **Search:** {', '.join(search_engines)}")
+            
+            # Summary generation status
+            if ai_providers:
+                st.success("✅ AI Summaries: Active")
+            else:
+                st.warning("⚠️ AI Summaries: Fallback mode")
         except Exception as e:
             st.error(f"Config error: {str(e)}")
         
@@ -763,7 +849,15 @@ def main():
                     image_results = safe_api_call(processor.search_high_quality_images, query, 3)  # Fewer images for speed
                 
                 progress.progress(100)
-                status.text("✅ Research completed!")
+                
+                # Show success message with AI provider info
+                provider_used = summary.get('provider', 'Unknown')
+                if provider_used != 'Enhanced Fallback':
+                    success_msg = f"✅ Research completed! AI Summary by **{provider_used}**"
+                else:
+                    success_msg = "✅ Research completed! Summary generated"
+                
+                status.success(success_msg)
                 
                 # Store results
                 st.session_state.research_results = {
