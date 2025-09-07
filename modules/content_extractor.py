@@ -14,9 +14,22 @@ import re
 # Content extraction libraries
 from bs4 import BeautifulSoup
 import newspaper
-from trafilatura import extract
-import readability
 from fake_useragent import UserAgent
+
+# Optional imports
+try:
+    from trafilatura import extract as trafilatura_extract
+    TRAFILATURA_AVAILABLE = True
+except ImportError:
+    TRAFILATURA_AVAILABLE = False
+    trafilatura_extract = None
+
+try:
+    import readability
+    READABILITY_AVAILABLE = True
+except ImportError:
+    READABILITY_AVAILABLE = False
+    readability = None
 
 from config import Config
 
@@ -93,13 +106,16 @@ class ContentExtractor:
                 return cached_content
         
         try:
-            # Try multiple extraction methods
-            methods = [
-                self._extract_with_newspaper,
-                self._extract_with_trafilatura,
-                self._extract_with_readability,
-                self._extract_with_beautifulsoup
-            ]
+            # Try multiple extraction methods (conditionally based on availability)
+            methods = [self._extract_with_newspaper]
+            
+            if TRAFILATURA_AVAILABLE:
+                methods.append(self._extract_with_trafilatura)
+            
+            if READABILITY_AVAILABLE:
+                methods.append(self._extract_with_readability)
+                
+            methods.append(self._extract_with_beautifulsoup)
             
             best_content = None
             best_score = 0
@@ -160,12 +176,16 @@ class ContentExtractor:
     
     def _extract_with_trafilatura(self, url: str) -> Optional[Dict]:
         """Extract content using trafilatura library"""
+        if not TRAFILATURA_AVAILABLE:
+            logger.debug("Trafilatura not available, skipping")
+            return None
+            
         try:
             response = self.session.get(url, timeout=self.config.SEARCH_TIMEOUT)
             response.raise_for_status()
             
             # Extract main content
-            content = extract(response.text, include_comments=False, include_tables=True)
+            content = trafilatura_extract(response.text, include_comments=False, include_tables=True)
             
             if not content or len(content) < self.config.MIN_ARTICLE_LENGTH:
                 return None
@@ -191,6 +211,10 @@ class ContentExtractor:
     
     def _extract_with_readability(self, url: str) -> Optional[Dict]:
         """Extract content using readability-lxml library"""
+        if not READABILITY_AVAILABLE:
+            logger.debug("Readability not available, skipping")
+            return None
+            
         try:
             response = self.session.get(url, timeout=self.config.SEARCH_TIMEOUT)
             response.raise_for_status()
