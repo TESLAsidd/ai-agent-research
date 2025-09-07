@@ -9,9 +9,33 @@ A powerful AI-driven research tool that transforms hours of manual research into
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red?style=for-the-badge&logo=streamlit)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-## 🚀 **Live Demo**
+## 🚀 **Live Demo & Quick Deploy**
 
-**Try it now**: [AI Research Agent Demo](http://172.16.34.47:8523) *(Network accessible)*
+### **🌟 Try the Live Demo**
+**Demo URL**: [AI Research Agent Demo](http://172.16.34.47:8523) *(Network accessible)*
+
+### **☁️ Deploy Your Own (FREE)**
+
+**One-Click Deploy to Streamlit Cloud:**
+
+[![Deploy to Streamlit Cloud](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/new?repository=TESLAsidd/ai-agent-research&branch=main&mainModule=streamlit_app.py)
+
+**Alternative Deployment Options:**
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/streamlit)
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/TESLAsidd/ai-agent-research)
+
+**Docker Deployment:**
+```bash
+docker run -p 8501:8501 ghcr.io/teslasidd/ai-agent-research:latest
+```
+
+**📋 Quick Deploy Steps:**
+1. Click the Streamlit Cloud button above
+2. Sign in with GitHub
+3. Your app will be live in 2-3 minutes!
+4. Share the URL with anyone worldwide
 
 ## ✨ **Key Features**
 
@@ -283,7 +307,7 @@ This project was built for hackathons and competitions, featuring:
 
 **⭐ Star this repository if you find it useful!**
 
-[🚀 Try Live Demo](http://172.16.34.47:8523) • [📖 Documentation](docs/) • [🐛 Report Bug](issues/) • [💡 Request Feature](issues/)
+[🚀 One-Click Deploy](https://share.streamlit.io/new?repository=TESLAsidd/ai-agent-research&branch=main&mainModule=streamlit_app.py) • [📖 Documentation](DEPLOYMENT.md) • [🐛 Report Bug](https://github.com/TESLAsidd/ai-agent-research/issues) • [💡 Request Feature](https://github.com/TESLAsidd/ai-agent-research/issues)
 
 </div> 🤖📚
 
