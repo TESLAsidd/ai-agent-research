@@ -18,7 +18,7 @@ reportlab>=4.0.0
 
 # Content extraction (without conflicting dependencies)
 lxml>=4.9.4
-# trafilatura  # Removed due to version conflicts
+lxml_html_clean>=0.1.0
 markdown>=3.5.0
 langdetect>=1.0.9
 textstat>=0.7.3
