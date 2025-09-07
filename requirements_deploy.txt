@@ -1,0 +1,29 @@
+# Core requirements for Streamlit Community Cloud deployment
+streamlit>=1.28.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+pandas>=2.1.0
+plotly>=5.17.0
+numpy>=1.24.0
+python-dotenv>=1.0.0
+
+# Content extraction libraries
+newspaper3k>=0.2.8
+trafilatura>=1.6.0
+lxml>=4.9.0
+
+# PDF generation
+reportlab>=4.0.0
+
+# AI and API libraries
+openai>=1.3.0
+google-generativeai>=0.3.0
+
+# Optional dependencies (app works without these)
+pillow>=10.0.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# Web scraping utilities
+urllib3>=2.0.0
+certifi>=2023.7.22
