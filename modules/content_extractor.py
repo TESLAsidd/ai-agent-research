@@ -173,10 +173,165 @@ class ContentExtractor:
             brief_summary = self._extract_brief_summary(text)
             content['brief_summary'] = brief_summary
             
+            # Extract comprehensive details for ChatGPT-style summary
+            comprehensive_details = self._extract_comprehensive_details(content, text)
+            content['comprehensive_details'] = comprehensive_details
+            
             return content
         except Exception as e:
             logger.error(f"Failed to enhance content with key points: {str(e)}")
             return content
+    
+    def _extract_comprehensive_details(self, content: Dict, text: str) -> Dict:
+        """
+        Extract comprehensive details for ChatGPT-style summary
+        
+        Args:
+            content: Extracted content dictionary
+            text: Text content to analyze
+            
+        Returns:
+            Dictionary with comprehensive details
+        """
+        try:
+            # Purpose/Objective
+            purpose = self._extract_purpose(text, content.get('title', ''))
+            
+            # Scope of Work
+            scope = self._extract_scope(text)
+            
+            # Input/Output
+            input_output = self._extract_input_output(text)
+            
+            # Key Features
+            key_features = self._extract_key_features(text)
+            
+            # Target Audience/Use Case
+            audience_use_case = self._extract_audience_use_case(text)
+            
+            return {
+                'purpose': purpose,
+                'scope': scope,
+                'input_output': input_output,
+                'key_features': key_features,
+                'audience_use_case': audience_use_case
+            }
+        except Exception as e:
+            logger.error(f"Failed to extract comprehensive details: {str(e)}")
+            return {}
+    
+    def _extract_purpose(self, text: str, title: str) -> str:
+        """Extract purpose/objective from content"""
+        # Look for purpose-related keywords
+        purpose_indicators = [
+            'purpose', 'objective', 'aim', 'goal', 'intended to', 'designed to',
+            'created to', 'built to', 'meant to', 'focused on', 'centered on'
+        ]
+        
+        sentences = re.split(r'[.!?]+', text)
+        purpose_sentences = []
+        
+        for sentence in sentences[:20]:  # Check first 20 sentences
+            sentence_lower = sentence.lower()
+            if any(indicator in sentence_lower for indicator in purpose_indicators):
+                purpose_sentences.append(sentence.strip())
+        
+        if purpose_sentences:
+            return '. '.join(purpose_sentences[:2])  # Return first 2 purpose sentences
+        
+        # Fallback: Use title and first sentence
+        first_sentence = sentences[0].strip() if sentences else ''
+        return f"This content about '{title}' aims to provide information on the topic. {first_sentence}"
+    
+    def _extract_scope(self, text: str) -> str:
+        """Extract scope of work from content"""
+        # Look for scope-related keywords
+        scope_indicators = [
+            'scope', 'covers', 'includes', 'involves', 'performs', 'handles',
+            'manages', 'processes', 'analyzes', 'examines', 'reviews', 'investigates'
+        ]
+        
+        sentences = re.split(r'[.!?]+', text)
+        scope_sentences = []
+        
+        for sentence in sentences[:30]:  # Check first 30 sentences
+            sentence_lower = sentence.lower()
+            if any(indicator in sentence_lower for indicator in scope_indicators):
+                scope_sentences.append(sentence.strip())
+        
+        if scope_sentences:
+            return '. '.join(scope_sentences[:3])  # Return first 3 scope sentences
+        
+        # Fallback: General scope description
+        return "This content covers various aspects of the topic through analysis, research, and information gathering."
+    
+    def _extract_input_output(self, text: str) -> str:
+        """Extract input/output information from content"""
+        # Look for input/output keywords
+        io_indicators = [
+            'input', 'output', 'takes', 'provides', 'generates', 'produces',
+            'expects', 'delivers', 'returns', 'results in', 'yields', 'creates'
+        ]
+        
+        sentences = re.split(r'[.!?]+', text)
+        io_sentences = []
+        
+        for sentence in sentences[:20]:  # Check first 20 sentences
+            sentence_lower = sentence.lower()
+            if any(indicator in sentence_lower for indicator in io_indicators):
+                io_sentences.append(sentence.strip())
+        
+        if io_sentences:
+            return '. '.join(io_sentences[:2])  # Return first 2 I/O sentences
+        
+        # Fallback: General I/O description
+        return "The content takes research queries and topics as input and provides comprehensive analysis and summaries as output."
+    
+    def _extract_key_features(self, text: str) -> str:
+        """Extract key features from content"""
+        # Look for feature-related keywords
+        feature_indicators = [
+            'feature', 'capability', 'function', 'ability', 'unique', 'distinctive',
+            'powerful', 'advanced', 'innovative', 'cutting-edge', 'state-of-the-art',
+            'automated', 'intelligent', 'smart', 'efficient', 'effective'
+        ]
+        
+        sentences = re.split(r'[.!?]+', text)
+        feature_sentences = []
+        
+        for sentence in sentences[:25]:  # Check first 25 sentences
+            sentence_lower = sentence.lower()
+            if any(indicator in sentence_lower for indicator in feature_indicators):
+                feature_sentences.append(sentence.strip())
+        
+        if feature_sentences:
+            return '. '.join(feature_sentences[:3])  # Return first 3 feature sentences
+        
+        # Fallback: General features description
+        return "Key features include comprehensive analysis, automated research capabilities, and detailed information extraction."
+    
+    def _extract_audience_use_case(self, text: str) -> str:
+        """Extract target audience and use case from content"""
+        # Look for audience-related keywords
+        audience_indicators = [
+            'for', 'target', 'audience', 'users', 'researchers', 'students',
+            'professionals', 'developers', 'writers', 'analysts', 'helps',
+            'benefits', 'assists', 'supports', 'serves'
+        ]
+        
+        sentences = re.split(r'[.!?]+', text)
+        audience_sentences = []
+        
+        for sentence in sentences[:20]:  # Check first 20 sentences
+            sentence_lower = sentence.lower()
+            if any(indicator in sentence_lower for indicator in audience_indicators):
+                audience_sentences.append(sentence.strip())
+        
+        if audience_sentences:
+            return '. '.join(audience_sentences[:2])  # Return first 2 audience sentences
+        
+        # Fallback: General audience description
+        return "This content is designed for researchers, students, and professionals who need comprehensive information on various topics."
     
     def _extract_key_points(self, text: str) -> List[str]:
         """

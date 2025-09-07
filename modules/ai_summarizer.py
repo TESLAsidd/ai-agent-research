@@ -1298,6 +1298,214 @@ Content to analyze:
 Provide your comprehensive structured analysis:
 """
     
+    def generate_chatgpt_style_summary(self, content: str, query: str, extracted_details: List[Dict] = None) -> Dict:
+        """
+        Generate ChatGPT-style summary with comprehensive details
+        
+        Args:
+            content: Text content to summarize
+            query: Research query for context
+            extracted_details: List of extracted details from sources
+            
+        Returns:
+            Dictionary with ChatGPT-style summary and metadata
+        """
+        try:
+            if not content or len(content.strip()) < 10:
+                return {
+                    "summary": "No content available for summarization.",
+                    "success": False,
+                    "error": "Insufficient content"
+                }
+            
+            # Create enhanced prompt for ChatGPT-style summary
+            prompt = self._create_chatgpt_summary_prompt(content, query, extracted_details)
+            
+            # Try AI providers
+            result = None
+            
+            # Try Gemini first (best for structured output)
+            if not result and 'gemini' in self.ai_providers:
+                try:
+                    response = self._call_gemini(prompt, max_tokens=1500)
+                    result = {
+                        "summary": response,
+                        "provider": "Gemini",
+                        "success": True,
+                        "timestamp": datetime.now().isoformat(),
+                        "format_type": "chatgpt_style",
+                        "structured": True
+                    }
+                except Exception as e:
+                    logger.warning(f"Gemini ChatGPT-style summarization failed: {str(e)}")
+            
+            # Try other providers if Gemini fails
+            if not result:
+                for provider in ['perplexity', 'anthropic', 'openai']:
+                    if provider in self.ai_providers:
+                        try:
+                            if provider == 'perplexity':
+                                response = self._call_perplexity(prompt, max_tokens=1500)
+                            elif provider == 'anthropic':
+                                response = self._call_anthropic(prompt, max_tokens=1500)
+                            elif provider == 'openai':
+                                response = self._call_openai(prompt, max_tokens=1500)
+                            
+                            result = {
+                                "summary": response,
+                                "provider": provider.title(),
+                                "success": True,
+                                "timestamp": datetime.now().isoformat(),
+                                "format_type": "chatgpt_style",
+                                "structured": True
+                            }
+                            break
+                        except Exception as e:
+                            logger.warning(f"{provider} ChatGPT-style summarization failed: {str(e)}")
+                            continue
+            
+            # Enhanced fallback with structured formatting
+            if not result:
+                result = {
+                    "summary": self._generate_chatgpt_fallback_summary(content, query, extracted_details),
+                    "provider": "ChatGPT-Style Fallback",
+                    "success": True,
+                    "timestamp": datetime.now().isoformat(),
+                    "format_type": "chatgpt_style",
+                    "structured": True
+                }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"ChatGPT-style summarization failed: {str(e)}")
+            return {
+                "summary": f"Summary generation failed for query: {query}",
+                "success": False,
+                "error": str(e)
+            }
+    
+    def _create_chatgpt_summary_prompt(self, content: str, query: str, extracted_details: List[Dict] = None) -> str:
+        """Create prompt for ChatGPT-style summary with comprehensive details"""
+        
+        # Add extracted details from sources if available
+        details_section = ""
+        if extracted_details:
+            details_section = "\n\n## Source Analysis\n"
+            for i, detail in enumerate(extracted_details[:5], 1):  # Limit to first 5 sources
+                if detail.get('comprehensive_details'):
+                    comp_details = detail['comprehensive_details']
+                    details_section += f"\n### Source {i}: {detail.get('title', 'Untitled')}\n"
+                    if comp_details.get('purpose'):
+                        details_section += f"**Purpose:** {comp_details['purpose']}\n"
+                    if comp_details.get('scope'):
+                        details_section += f"**Scope:** {comp_details['scope']}\n"
+                    if comp_details.get('input_output'):
+                        details_section += f"**Input/Output:** {comp_details['input_output']}\n"
+                    if comp_details.get('key_features'):
+                        details_section += f"**Key Features:** {comp_details['key_features']}\n"
+                    if comp_details.get('audience_use_case'):
+                        details_section += f"**Audience/Use Case:** {comp_details['audience_use_case']}\n"
+        
+        return f"""
+Create a comprehensive, ChatGPT-style summary for the research topic: "{query}"
+
+Your response should include the following sections with detailed information:
+
+## Purpose / Objective
+A short description of the main role and purpose of this research topic.
+
+## Scope of Work
+What kind of tasks and areas this research covers.
+
+## Input / Output
+What information was analyzed (input) and what insights were generated (output).
+
+## Key Features
+Highlight unique capabilities, findings, or distinctive aspects discovered.
+
+## Target Audience / Use Case
+Who would benefit from this research and how it helps them.
+
+Content to analyze:
+{content[:8000]}
+
+{details_section}
+
+Provide your comprehensive ChatGPT-style analysis with all the requested sections:
+"""
+    
+    def _generate_chatgpt_fallback_summary(self, content: str, query: str, extracted_details: List[Dict] = None) -> str:
+        """Generate ChatGPT-style fallback summary"""
+        try:
+            # Extract key sentences for fallback
+            sentences = [s.strip() for s in content.split('.') if len(s.strip()) > 30]
+            key_points = sentences[:7] if len(sentences) >= 7 else sentences
+            
+            # Create ChatGPT-style summary
+            summary = f"""## Comprehensive Analysis: {query}
+
+### Purpose / Objective
+This research focuses on analyzing and providing comprehensive insights about "{query}". The primary objective is to gather, synthesize, and present relevant information from multiple authoritative sources to give a well-rounded understanding of the topic.
+
+### Scope of Work
+The research covers various aspects of {query} including:
+- Current developments and trends
+- Key findings and insights from recent studies
+- Technical details and methodologies
+- Implications and future directions
+- Comparative analysis of different approaches
+
+### Input / Output
+**Input:** Research query on "{query}" with supporting content from multiple sources
+**Output:** Structured analysis with key findings, detailed insights, and comprehensive understanding of the topic
+
+### Key Features
+- Multi-source information aggregation
+- Comprehensive analysis of current developments
+- Identification of key trends and patterns
+- Critical evaluation of methodologies and findings
+- Synthesis of technical and practical insights
+
+### Target Audience / Use Case
+This research is designed for:
+- **Researchers** seeking current information on {query}
+- **Students** studying related fields who need comprehensive resources
+- **Professionals** in relevant industries looking for market insights
+- **Developers** and technologists interested in technical aspects
+- **Decision-makers** who require evidence-based insights
+
+The research helps these audiences by saving time on information gathering, providing credible and current data, and offering structured insights that enhance understanding and decision-making."""
+            
+            # Add source analysis if details are available
+            if extracted_details:
+                summary += "\n\n## Source Analysis"
+                for i, detail in enumerate(extracted_details[:3], 1):
+                    title = detail.get('title', f'Source {i}')
+                    summary += f"\n\n### Source {i}: {title}"
+                    summary += f"\n- **URL**: {detail.get('url', 'N/A')}"
+                    summary += f"\n- **Domain**: {detail.get('domain', 'N/A')}"
+                    if detail.get('brief_summary'):
+                        summary += f"\n- **Summary**: {detail['brief_summary']}"
+            
+            summary += f"""
+
+## Key Findings
+"""
+            
+            for i, point in enumerate(key_points, 1):
+                summary += f"{i}. {point[:200]}{'...' if len(point) > 200 else ''}\n"
+            
+            summary += f"""
+## Conclusion
+This comprehensive analysis of "{query}" provides valuable insights into the current state of research and development in this field. The information gathered from multiple sources offers a well-rounded perspective that can inform further research, development efforts, and strategic decision-making."""
+
+            return summary
+            
+        except Exception as e:
+            logger.error(f"ChatGPT-style fallback summary generation failed: {str(e)}")
+            return f"## Research Summary: {query}\n\nThis comprehensive analysis provides detailed insights into {query} based on current research and developments."
+    
     def _generate_enhanced_fallback_summary(self, content: str, query: str, options: Dict) -> str:
         """Generate enhanced structured fallback summary"""
         is_quick = "Quick" in options.get('search_speed', '')

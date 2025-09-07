@@ -390,7 +390,11 @@ def main():
                         
                         if not summary.get('success'):
                             summary = summarizer.generate_structured_summary(combined_text, query, summary_options)
-                            
+                        
+                        # Try ChatGPT-style summary if structured summary fails
+                        if not summary.get('success'):
+                            summary = summarizer.generate_chatgpt_style_summary(combined_text, query, extracted_content)
+                        
                         if not summary.get('success'):
                             summary = summarizer.summarize_content(combined_text, query)
                             
@@ -671,8 +675,33 @@ def display_sources_section(results):
                                 st.markdown(f"**📄 Brief Summary:**")
                                 st.info(extracted['brief_summary'])
                             
+                            # Show comprehensive details if available
+                            if 'comprehensive_details' in extracted and extracted['comprehensive_details']:
+                                comp_details = extracted['comprehensive_details']
+                                st.markdown("**📋 Comprehensive Details:**")
+                                
+                                # Purpose/Objective
+                                if comp_details.get('purpose'):
+                                    st.markdown(f"**✅ Purpose/Objective:** {comp_details['purpose']}")
+                                
+                                # Scope of Work
+                                if comp_details.get('scope'):
+                                    st.markdown(f"**✅ Scope of Work:** {comp_details['scope']}")
+                                
+                                # Input/Output
+                                if comp_details.get('input_output'):
+                                    st.markdown(f"**✅ Input/Output:** {comp_details['input_output']}")
+                                
+                                # Key Features
+                                if comp_details.get('key_features'):
+                                    st.markdown(f"**✅ Key Features:** {comp_details['key_features']}")
+                                
+                                # Target Audience/Use Case
+                                if comp_details.get('audience_use_case'):
+                                    st.markdown(f"**✅ Target Audience/Use Case:** {comp_details['audience_use_case']}")
+                            
                             # Show key points if available with enhanced styling
-                            if 'key_points' in extracted and extracted['key_points']:
+                            elif 'key_points' in extracted and extracted['key_points']:
                                 st.markdown("**🔑 Key Insights:**")
                                 for point in extracted['key_points'][:5]:
                                     st.markdown(f"• {point}")
