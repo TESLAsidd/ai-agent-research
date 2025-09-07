@@ -711,19 +711,35 @@ def main():
                         
                         if not summary.get('success'):
                             summary = summarizer.summarize_content(combined_text, query)
+                            
+                        # Ensure summary is always successful
+                        if not summary.get('success'):
+                            summary = {
+                                "summary": summarizer._generate_enhanced_fallback_summary(combined_text, query),
+                                "success": True,
+                                "provider": "Enhanced Fallback",
+                                "timestamp": datetime.now().isoformat()
+                            }
                     except Exception as e:
                         logger.error(f"Summarization error: {str(e)}")
+                        # Always provide a summary, even if basic
+                        summarizer = AISummarizer()
                         summary = {
-                            "summary": f"Research completed for '{query}'. Please check the Sources tab for detailed information.",
+                            "summary": summarizer._generate_enhanced_fallback_summary(combined_text, query),
                             "success": True,
-                            "provider": "Fallback",
-                            "error": str(e)
+                            "provider": "Enhanced Fallback",
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat()
                         }
                 else:
+                    # Generate summary even with no content - use search results
+                    summarizer = AISummarizer()
+                    search_text = " ".join([result.get('snippet', '') for result in results_list[:3]])[:800] if results_list else f"Research query: {query}"
                     summary = {
-                        "summary": f"Research query '{query}' has been processed. Please check the Sources tab for available information.",
+                        "summary": summarizer._generate_enhanced_fallback_summary(search_text, query),
                         "success": True,
-                        "provider": "Basic"
+                        "provider": "Enhanced Fallback",
+                        "timestamp": datetime.now().isoformat()
                     }
                 
                 progress.progress(80)
